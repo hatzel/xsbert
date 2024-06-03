@@ -13,8 +13,12 @@ class ReferenceTransformer(models.Transformer):
         attention_mask = features['attention_mask']
         s = input_ids.shape[1]
         device = input_ids.device
-        # TODO: generalize to arbitrary tokenizer
-        ref_ids = torch.IntTensor([[0] + [1] * (s - 2) + [2]]).to(device)
+        ref_ids = torch.IntTensor(
+            [
+                [self.tokenizer.bos_token_id] +
+                [self.tokenizer.pad_token_id] * (s - 2) +
+                [self.tokenizer.eos_token_id]]
+        ).to(device)
         features['input_ids'] = torch.cat([input_ids, ref_ids], dim=0)
         if input_ids.shape[0] > 1:
             ref_att = torch.ones((1, s)).int().to(device)

@@ -30,7 +30,7 @@ class XSTransformer(SentenceTransformer):
     def tokenize_text(self, text: str):
         tokens = self[0].tokenizer.tokenize(text)
         tokens = [t[1:] if t[0] in ['Ġ', 'Â'] else t for t in tokens]
-        tokens = ['CLS'] + tokens + ['EOS']
+        tokens = ['<s>'] + tokens + ['</s>']
         return tokens
 
     def _compute_integrated_jacobian(
@@ -70,7 +70,7 @@ class XSTransformer(SentenceTransformer):
         assert sim_measure in ['cos', 'dot'], f'invalid argument for sim_measure: {sim_measure}'
 
         self.intermediates.clear()
-        device = self[0].auto_model.embeddings.word_embeddings.weight.device
+        device = self[0].auto_model.device
 
         #TODO: this should be a method
         inpt_a = self[0].tokenize([text_a])
@@ -231,6 +231,31 @@ class XSMPNet(XSTransformer):
                 hook.remove()
             del self.reshaping_hooks
 
+
+class XMistral(XSTransformer):
+
+    def init_attribution_to_layer(self, idx: int, N_steps: int):
+        if hasattr(self, 'hook') and self.interpolation_hook is not None:
+            raise AttributeError('a hook is already registered')
+        try:
+            assert idx < len(self[0].auto_model.encoder.layer), f'the model does not have a layer {idx}'
+        except AttributeError:
+            assert idx < len(self[0].auto_model.layers), f'the model does not have a layer {idx}'
+        # try:
+        self.N_steps = N_steps
+        self.intermediates = []
+        self.interpolation_hook = self[0].auto_model.layers[idx].register_forward_pre_hook(
+            hooks.mistral_interpolation_hook(N=N_steps, outputs=self.intermediates)
+        )
+        
+
+    def reset_attribution(self):
+        if hasattr(self, 'interpolation_hook'):
+            self.interpolation_hook.remove()
+            del self.interpolation_hook
+            for hook in self.reshaping_hooks:
+                hook.remove()
+            del self.reshaping_hooks
 
 if __name__ == '__main__':
 

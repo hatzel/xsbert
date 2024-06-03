@@ -1,3 +1,4 @@
+from typing import Tuple
 import torch
 
 
@@ -45,3 +46,14 @@ def mpnet_reshaping_hook(N: int):
           p = repeat_reference_input(inpt[3], N=N)
           return inpt[:3] + (p,)
      return hook
+
+
+def mistral_interpolation_hook(N: int, outputs: list):
+    def hook(model, inpt: Tuple[torch.Tensor]):
+        # input is a tuple with a single torch Tensor
+        # The torch tensor has the shape [batch, length, embedding]
+        # Batch size is always 2: the input embedding and the semenatically neutral reference embedding
+        g = interpolate_reference_embedding(inpt[0], N=N)
+        outputs.append(g)
+        return (g,)
+    return hook
