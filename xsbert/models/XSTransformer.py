@@ -78,6 +78,7 @@ class XSTransformer(SentenceTransformer):
         features_a = self.forward(inpt_a)
         emb_a = features_a['sentence_embedding']
         interm_a = self.intermediates[0]
+        print("Interm a", interm_a.shape)
         J_a = self._compute_integrated_jacobian(emb_a, interm_a, move_to_cpu=move_to_cpu, verbose=verbose)
         D, Sa, Da = J_a.shape
         J_a = J_a.reshape((D, Sa * Da))
@@ -90,6 +91,7 @@ class XSTransformer(SentenceTransformer):
         features_b = self.forward(inpt_b)
         emb_b = features_b['sentence_embedding']
         interm_b = self.intermediates[1]
+        print("Interm b", interm_a.shape)
         J_b = self._compute_integrated_jacobian(emb_b, interm_b, move_to_cpu=move_to_cpu, verbose=verbose)
         _, Sb, Db = J_b.shape
         J_b = J_b.reshape((D, Sb * Db))
@@ -98,8 +100,12 @@ class XSTransformer(SentenceTransformer):
         db = db.reshape(Sb * Db, 1).detach()
 
         J = torch.mm(J_a.T, J_b)
-        da = da.repeat(1, Sb * Db)
-        db = db.repeat(1, Sa * Da)
+        if move_to_cpu:
+            da = da.cpu().repeat(1, Sb * Db)
+            db = db.cpu().repeat(1, Sa * Da)
+        else:
+            da = da.repeat(1, Sb * Db)
+            db = db.repeat(1, Sa * Da)
         if move_to_cpu:
             da = da.detach().cpu()
             db = db.detach().cpu()
@@ -253,9 +259,6 @@ class XMistral(XSTransformer):
         if hasattr(self, 'interpolation_hook'):
             self.interpolation_hook.remove()
             del self.interpolation_hook
-            for hook in self.reshaping_hooks:
-                hook.remove()
-            del self.reshaping_hooks
 
 if __name__ == '__main__':
 

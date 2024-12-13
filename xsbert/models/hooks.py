@@ -54,6 +54,8 @@ def mistral_interpolation_hook(N: int, outputs: list):
         # The torch tensor has the shape [batch, length, embedding]
         # Batch size is always 2: the input embedding and the semenatically neutral reference embedding
         g = interpolate_reference_embedding(inpt[0], N=N)
+        print("Intermediats length", len(outputs))
+        print("Intermediats inner shape", [x.shape for x in outputs])
         outputs.append(g)
         return (g,)
     return hook
